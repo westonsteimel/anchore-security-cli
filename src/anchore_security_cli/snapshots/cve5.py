@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shlex
 import shutil
@@ -15,6 +16,7 @@ class CVE5Snapshotter:
         self._github_repo = "CVEProject/cvelistV5"
         self._default_branch = "main"
         self._repo_root = repo_root
+        self._logger = logging.getLogger("cve5-snapshotter")
 
     def _process_files(self, tmp_path: str):
         for file in iglob(os.path.join(tmp_path, "**/CVE-*.json"), recursive=True):
@@ -29,7 +31,7 @@ class CVE5Snapshotter:
             with open(output_path, "w") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
 
-    def process(self, commit: bool=True, push: bool = False):
+    def process(self):
         r = requests.get(
             f"https://api.github.com/repos/{self._github_repo}/commits/{self._default_branch}",
             timeout=10,
@@ -54,9 +56,6 @@ class CVE5Snapshotter:
                 tmp_path = os.path.join(tmp, f"cvelistV5-{latest_commit}", "cves")
                 self._process_files(tmp_path)
 
-            if commit:
-                execute_command("git add cves", cwd=self._repo_root)
-                execute_command(f'git commit -s -m "syncing data from https://github.com/{self._github_repo}/commits/{latest_commit}"', cwd=self._repo_root)  # noqa: E501
-
-                if push:
-                    execute_command("git push origin main")
+            self._logger.info("git add cves")
+            self._logger.info(f'git commit -s -m "syncing data from https://github.com/{self._github_repo}/commits/{latest_commit}"')
+            self._logger.info("git push origin main")
